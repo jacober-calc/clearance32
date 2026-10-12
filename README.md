@@ -1,3 +1,5 @@
+![Social Media Preview](assets/clearance32_social_preview.png)
+
 # clearance Statefile
 
 ## CONTENTS
