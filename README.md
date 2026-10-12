@@ -82,6 +82,10 @@ E = D × A × (1 - (1 - P)^N)
 
 This calculates the total number of mines expected to be detected during N passes.
 
+Every mine in the area is either found or still remaining, so E + λ always equals D × A. Each pass leaves a fraction (1 − P) of the remaining mines, which makes λ fall by the same factor every pass: a straight line on a log scale.
+
+![Found and remaining mines by pass](assets/found_vs_remaining.svg)
+
 #### Confidence Calculation
 
 The confidence C that actual mines remaining ≤ M is calculated using the cumulative Poisson distribution:
@@ -89,6 +93,10 @@ The confidence C that actual mines remaining ≤ M is calculated using the cumul
 ```
 C = Σ(k=0 to M) [λ^k × e^(-λ) / k!]
 ```
+
+The chart shows the Poisson distribution of mines remaining after 5, 6, and 7 passes in Example 7.1. Confidence is the green area, k ≤ M. At N = 6 it reaches 0.9361, short of the 0.95 target; the seventh pass lifts it to 0.9844.
+
+![Poisson confidence](assets/poisson_confidence.svg)
 
 #### Time Calculation
 
@@ -98,6 +106,10 @@ T = [(A × N) / (V × S) + E × H] / O × 24
 
 Where V is velocity, S is swath width, H is handling time per mine, and O is operational tempo.
 
+Search time grows in equal steps with each pass, while disposal time levels off as fewer mines remain to be found. The program rounds E to the nearest whole mine before multiplying by H. Dividing operating hours by O gives operating days, and multiplying by 24 converts them to elapsed hours.
+
+![Mission time](assets/time_breakdown.svg)
+
 ### 3.3 Area of Operations
 
 Mine clearance operations involve systematic coverage of the designated area using an MCM asset that follows a search pattern (typically lawn-mower pattern) with defined swath width.
@@ -105,6 +117,19 @@ Mine clearance operations involve systematic coverage of the designated area usi
 ### 3.4 Program Logic Flow
 
 The master program (LBL M) executes an iterative algorithm to determine the minimum number of passes required to achieve the commander's intended confidence level.
+
+```mermaid
+flowchart TD
+    nM["XEQ M: prompt I, M, D, A, P, S, V, O, H"] --> nZ["N = 0"]
+    nZ --> nInc["N = N + 1"]
+    nInc --> nW["XEQ W: lambda"]
+    nW --> nY["XEQ Y: confidence C"]
+    nY --> nQ{"Is I greater than C?"}
+    nQ -- "Yes" --> nInc
+    nQ -- "No" --> nU["XEQ U: encounters E"]
+    nU --> nV["XEQ V: time T"]
+    nV --> nOut["T: time, Z: encounters, Y: passes, X: confidence"]
+```
 
 **Program Flow:**
 1. Initialize N = 0
@@ -117,6 +142,10 @@ The master program (LBL M) executes an iterative algorithm to determine the mini
 6. Calculate E (encounters) using XEQ U
 7. Calculate T (time) using XEQ V
 8. Display results
+
+The chart shows the stopping rule for M = 0, 1, and 2 using the inputs of Example 7.1. A larger M allows more mines to remain, so the required confidence is reached in fewer passes.
+
+![Stopping rule](assets/confidence_by_pass.svg)
 
 ---
 
@@ -284,6 +313,12 @@ Press: `XEQ M`
 The operation requires 7 passes to achieve 98.44% confidence (exceeding the 95% requirement) that no more than 1 mine remains. Approximately 43 mines will be encountered requiring disposal. Total mission time is 234 hours, equivalent to 11.7 operational days at 20 hours/day tempo.
 
 **Additional Information:** To view expected mines remaining (lambda value), press `RCL L`. Result: 0.18795 mines expected remaining in the entire AOR.
+
+**Planning Sensitivity:**
+
+The chart repeats the master program's calculation across a range of detection probabilities, holding density, area, and M at the Example 7.1 values. Each step marks the point where one fewer pass is needed. Raising the intended confidence from 0.95 to 0.99 usually costs one extra pass, occasionally none or two.
+
+![Passes required by detection probability](assets/passes_vs_detection.svg)
 
 ---
 
